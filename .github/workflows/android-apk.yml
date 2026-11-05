@@ -1,3 +1,4 @@
+
 name: Build Snowflake Pro APK
 
 on:
@@ -22,6 +23,11 @@ jobs:
 
       - name: Extract project
         run: unzip -o SnowflakePro_Android14_PhoneBuild.zip
+
+      - name: Fix Java target
+        working-directory: SnowflakePro_Android14
+        run: |
+          sed -i '/kotlinOptions/i\    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }' app/build.gradle.kts
 
       - name: Build APK
         working-directory: SnowflakePro_Android14
