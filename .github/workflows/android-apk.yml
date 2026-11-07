@@ -21,7 +21,16 @@ jobs:
           gradle-version: '8.9'
 
       - name: Extract AURIX project
-        run: unzip -o AURIX_Options_Manager_Elite_Pro_Android14_FIXED.zip -d extracted
+        run: |
+  set -euo pipefail
+  ZIP=$(find . -maxdepth 1 -type f -iname 'AURIX_Options_Manager*.zip' -print -quit)
+  if [ -z "$ZIP" ]; then
+    echo "AURIX ZIP archive not found"
+    ls -la
+    exit 1
+  fi
+  mkdir -p extracted
+  unzip -o "$ZIP" -d extracted
 
       - name: Locate project
         id: project
