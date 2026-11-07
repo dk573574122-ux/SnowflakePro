@@ -1,33 +1,50 @@
-name: Build Snowflake Pro APK
+name: Build AURIX Options Manager APK
+
 on:
   workflow_dispatch:
   push:
     branches: [main]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '17' }
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: '8.9' }
-      - name: Extract project
-        run: unzip -o SnowflakePro_Android14_PhoneBuild.zip -d extracted
+        with:
+          gradle-version: '8.9'
+
+      - name: Extract AURIX project
+        run: unzip -o AURIX_Options_Manager_Elite_Pro_Android14_FIXED.zip -d extracted
+
       - name: Locate project
         id: project
         shell: bash
         run: |
+          set -e
           APP=$(find extracted -type f -path '*/app/build.gradle.kts' -print -quit)
-          test -n "$APP" || { echo 'app/build.gradle.kts missing'; exit 1; }
-          APPDIR=$(dirname "$APP"); PROJ=$(dirname "$APPDIR")
-          MAN="$APPDIR/src/main/AndroidManifest.xml"
-          if [ ! -f "$MAN" ]; then M=$(find "$APPDIR/src/main" -maxdepth 1 -iname 'AndroidManifest.xml*' -print -quit); test -n "$M"; cp "$M" "$MAN"; fi
+          test -n "$APP" || { echo "app/build.gradle.kts missing"; exit 1; }
+          APPDIR=$(dirname "$APP")
+          PROJ=$(dirname "$APPDIR")
+          MAIN="$APPDIR/src/main"
+          if [ ! -f "$MAIN/AndroidManifest.xml" ]; then
+            M=$(find "$MAIN" -maxdepth 1 -type f -iname 'AndroidManifest.xml*' -print -quit)
+            test -n "$M" || { echo "AndroidManifest.xml missing"; exit 1; }
+            cp "$M" "$MAIN/AndroidManifest.xml"
+          fi
           echo "dir=$PROJ" >> "$GITHUB_OUTPUT"
           echo "app=$APPDIR" >> "$GITHUB_OUTPUT"
+
       - name: Build APK
         run: gradle --no-daemon -p "${{ steps.project.outputs.dir }}" assembleDebug
+
       - uses: actions/upload-artifact@v4
         with:
-          name: SnowflakePro-2.0-APK
+          name: AURIX-Options-Manager-APK
           path: ${{ steps.project.outputs.app }}/build/outputs/apk/debug/app-debug.apk
