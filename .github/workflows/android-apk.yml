@@ -1,73 +1,33 @@
 name: Build Snowflake Pro APK
-
 on:
   workflow_dispatch:
   push:
     branches: [main]
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
+        with: { distribution: temurin, java-version: '17' }
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-
+        with: { gradle-version: '8.9' }
       - name: Extract project
         run: unzip -o SnowflakePro_Android14_PhoneBuild.zip -d extracted
-
-      - name: Locate project and normalize Android manifest
+      - name: Locate project
         id: project
         shell: bash
         run: |
-          set -e
-          APP_GRADLE=$(find extracted -type f -path '*/app/build.gradle.kts' -print -quit)
-          if [ -z "$APP_GRADLE" ]; then
-            echo "Could not find app/build.gradle.kts in the ZIP."
-            find extracted -maxdepth 7 -type f | head -150
-            exit 1
-          fi
-
-          APP_DIR=$(dirname "$APP_GRADLE")
-          PROJECT_DIR=$(dirname "$APP_DIR")
-          MAIN_DIR="$APP_DIR/src/main"
-
-          if [ ! -f "$MAIN_DIR/AndroidManifest.xml" ]; then
-            MANIFEST=$(find "$MAIN_DIR" -maxdepth 1 -type f \( -iname 'AndroidManifest.xml.' -o -iname 'AndroidManifest_OTC.xml' -o -iname 'AndroidManifest_OTC.xml.' -o -iname 'AndroidManifest.xml' \) -print -quit)
-            if [ -z "$MANIFEST" ]; then
-              echo "AndroidManifest.xml was not found. Files in app/src/main:"
-              find "$MAIN_DIR" -maxdepth 2 -type f
-              exit 1
-            fi
-            cp "$MANIFEST" "$MAIN_DIR/AndroidManifest.xml"
-          fi
-
-          MAIN_ACTIVITY=$(find "$APP_DIR/src/main/java" -type f -name 'MainActivity.kt' -print -quit)
-          if [ -z "$MAIN_ACTIVITY" ]; then
-            echo "MainActivity.kt was not found."
-            exit 1
-          fi
-
-          # The current source archive is missing the final closing brace of SnowflakeApp().
-          echo '}' >> "$MAIN_ACTIVITY"
-
-          # Configure Java 17 inside the Android DSL block.
-          sed -i 's/android {/android { compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 };/' "$APP_GRADLE"
-
-          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
-          echo "app_dir=$APP_DIR" >> "$GITHUB_OUTPUT"
-
+          APP=$(find extracted -type f -path '*/app/build.gradle.kts' -print -quit)
+          test -n "$APP" || { echo 'app/build.gradle.kts missing'; exit 1; }
+          APPDIR=$(dirname "$APP"); PROJ=$(dirname "$APPDIR")
+          MAN="$APPDIR/src/main/AndroidManifest.xml"
+          if [ ! -f "$MAN" ]; then M=$(find "$APPDIR/src/main" -maxdepth 1 -iname 'AndroidManifest.xml*' -print -quit); test -n "$M"; cp "$M" "$MAN"; fi
+          echo "dir=$PROJ" >> "$GITHUB_OUTPUT"
+          echo "app=$APPDIR" >> "$GITHUB_OUTPUT"
       - name: Build APK
-        run: gradle --no-daemon -p "${{ steps.project.outputs.project_dir }}" assembleDebug
-
+        run: gradle --no-daemon -p "${{ steps.project.outputs.dir }}" assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: SnowflakePro-APK
-          path: ${{ steps.project.outputs.app_dir }}/build/outputs/apk/debug/app-debug.apk
+          name: SnowflakePro-2.0-APK
+          path: ${{ steps.project.outputs.app }}/build/outputs/apk/debug/app-debug.apk
