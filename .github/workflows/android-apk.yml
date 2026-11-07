@@ -23,21 +23,35 @@ jobs:
       - name: Extract project
         run: unzip -o SnowflakePro_Android14_PhoneBuild.zip -d extracted
 
-      - name: Locate Android project and fix Java target
+      - name: Locate project and normalize Android manifest
         id: project
         shell: bash
         run: |
+          set -e
           APP_GRADLE=$(find extracted -type f -path '*/app/build.gradle.kts' -print -quit)
           if [ -z "$APP_GRADLE" ]; then
-            echo "Could not find app/build.gradle.kts inside the uploaded ZIP."
-            echo "Archive contents:"
-            find extracted -maxdepth 5 -type f | head -100
+            echo "Could not find app/build.gradle.kts in the ZIP."
+            find extracted -maxdepth 7 -type f | head -150
             exit 1
           fi
+
           APP_DIR=$(dirname "$APP_GRADLE")
           PROJECT_DIR=$(dirname "$APP_DIR")
+          MAIN_DIR="$APP_DIR/src/main"
+
+          if [ ! -f "$MAIN_DIR/AndroidManifest.xml" ]; then
+            MANIFEST=$(find "$MAIN_DIR" -maxdepth 1 -type f \( -iname 'AndroidManifest.xml.' -o -iname 'AndroidManifest_OTC.xml' -o -iname 'AndroidManifest_OTC.xml.' -o -iname 'AndroidManifest.xml' \) -print -quit)
+            if [ -z "$MANIFEST" ]; then
+              echo "AndroidManifest.xml was not found. Files in app/src/main:"
+              find "$MAIN_DIR" -maxdepth 2 -type f
+              exit 1
+            fi
+            cp "$MANIFEST" "$MAIN_DIR/AndroidManifest.xml"
+          fi
+
           echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
           echo "app_dir=$APP_DIR" >> "$GITHUB_OUTPUT"
+
           sed -i '/kotlinOptions/i\    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }' "$APP_GRADLE"
 
       - name: Build APK
