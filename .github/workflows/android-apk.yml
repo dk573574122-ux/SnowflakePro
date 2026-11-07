@@ -49,10 +49,20 @@ jobs:
             cp "$MANIFEST" "$MAIN_DIR/AndroidManifest.xml"
           fi
 
+          MAIN_ACTIVITY=$(find "$APP_DIR/src/main/java" -type f -name 'MainActivity.kt' -print -quit)
+          if [ -z "$MAIN_ACTIVITY" ]; then
+            echo "MainActivity.kt was not found."
+            exit 1
+          fi
+
+          # The current source archive is missing the final closing brace of SnowflakeApp().
+          echo '}' >> "$MAIN_ACTIVITY"
+
+          # Configure Java 17 inside the Android DSL block.
+          sed -i 's/android {/android { compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 };/' "$APP_GRADLE"
+
           echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
           echo "app_dir=$APP_DIR" >> "$GITHUB_OUTPUT"
-
-          sed -i '/kotlinOptions/i\    compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }' "$APP_GRADLE"
 
       - name: Build APK
         run: gradle --no-daemon -p "${{ steps.project.outputs.project_dir }}" assembleDebug
