@@ -1,5 +1,4 @@
-
-name: Build AURIX Options Manager APK
+name: Build AURIX Pattern Vision APK
 
 on:
   workflow_dispatch:
@@ -25,29 +24,45 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ZIP=$(find . -maxdepth 1 -type f -iname 'AURIX_Options_Manager*.zip' -print -quit)
+          echo 'Files in repository root:'
+          ls -lah
+          ZIP=''
+          for candidate in \
+            'AURIX_Pattern_Vision_Integrated_Android14-1.zip' \
+            'AURIX_Pattern_Vision_Integrated_Android14.zip' \
+            'AURIX_Pattern_Vision_Integrated_Android14_WORKFLOW_FIXED.zip' \
+            'SnowflakePro_Android14_PhoneBuild.zip'; do
+            if [ -f "$candidate" ]; then ZIP="$candidate"; break; fi
+          done
           if [ -z "$ZIP" ]; then
-            echo "AURIX ZIP archive not found"
-            ls -la
+            ZIP=$(find . -maxdepth 1 -type f -iname '*AURIX*Pattern*Vision*.zip' -print -quit || true)
+          fi
+          if [ -z "$ZIP" ]; then
+            echo 'AURIX project ZIP not found. Upload the AURIX ZIP to the repository root.'
             exit 1
           fi
+          echo "Extracting: $ZIP"
           mkdir -p extracted
           unzip -o "$ZIP" -d extracted
 
-      - name: Locate project
+      - name: Locate Android project
         id: project
         shell: bash
         run: |
           set -euo pipefail
           APP=$(find extracted -type f -path '*/app/build.gradle.kts' -print -quit)
-          test -n "$APP" || { echo "app/build.gradle.kts missing"; exit 1; }
+          if [ -z "$APP" ]; then
+            echo 'app/build.gradle.kts not found inside the selected ZIP'
+            find extracted -maxdepth 5 -type f | head -100
+            exit 1
+          fi
           APPDIR=$(dirname "$APP")
           PROJ=$(dirname "$APPDIR")
-          MAIN="$APPDIR/src/main"
-          if [ ! -f "$MAIN/AndroidManifest.xml" ]; then
-            M=$(find "$MAIN" -maxdepth 1 -type f -iname 'AndroidManifest.xml*' -print -quit)
-            test -n "$M" || { echo "AndroidManifest.xml missing"; exit 1; }
-            cp "$M" "$MAIN/AndroidManifest.xml"
+          MAN="$APPDIR/src/main/AndroidManifest.xml"
+          if [ ! -f "$MAN" ]; then
+            M=$(find "$APPDIR/src/main" -maxdepth 1 -iname 'AndroidManifest.xml*' -print -quit || true)
+            if [ -z "$M" ]; then echo 'AndroidManifest.xml missing'; exit 1; fi
+            cp "$M" "$MAN"
           fi
           echo "dir=$PROJ" >> "$GITHUB_OUTPUT"
           echo "app=$APPDIR" >> "$GITHUB_OUTPUT"
@@ -57,5 +72,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: AURIX-Options-Manager-APK
+          name: AURIX-Pattern-Vision-APK
           path: ${{ steps.project.outputs.app }}/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
