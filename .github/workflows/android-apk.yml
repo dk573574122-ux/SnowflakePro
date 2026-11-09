@@ -21,7 +21,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ZIP="AURIX_COMPLETE_SOURCE_FIXED.zip"
+          ZIP="AURIX_COMPLETE_SOURCE_FIXED_v2.zip"
           test -f "$ZIP" || { echo "Missing $ZIP"; exit 1; }
           echo "Selected project archive: $ZIP"
           mkdir -p extracted
