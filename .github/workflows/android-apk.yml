@@ -28,34 +28,35 @@ jobs:
           ls -lah
 
           ZIP=''
-          # Prefer the Kotlin-fixed archive over older project archives.
+          # Use the repaired source archive first; do not fall back to the older broken Kotlin archive.
           for candidate in \
+            'AURIX_Pattern_Vision_KOTLIN_REPAIRED.zip' \
+            'AURIX_Pattern_Vision_KOTLIN_REPAIRED_v2.zip' \
             'AURIX_Pattern_Vision_KOTLIN_FIXED.zip' \
-            'AURIX_Pattern_Vision_Integrated_Android14_KOTLIN_FIXED.zip' \
+            'AURIX_Pattern_Vision_Integrated_Android14_WORKFLOW_FIXED.zip' \
             'AURIX_Pattern_Vision_Integrated_Android14-1.zip' \
             'AURIX_Pattern_Vision_Integrated_Android14.zip' \
-            'AURIX_Pattern_Vision_Integrated_Android14_WORKFLOW_FIXED.zip' \
             'SnowflakePro_Android14_PhoneBuild.zip'; do
             if [ -f "$candidate" ]; then ZIP="$candidate"; break; fi
           done
 
           if [ -z "$ZIP" ]; then
-            ZIP=$(find . -maxdepth 1 -type f -iname '*AURIX*Pattern*Vision*.zip' -print -quit || true)
-          fi
-
-          if [ -z "$ZIP" ]; then
-            echo 'AURIX project ZIP not found. Upload the AURIX source ZIP to the repository root.'
+            echo 'AURIX source ZIP not found in repository root.'
             exit 1
           fi
 
           echo "Selected project archive: $ZIP"
-          echo "Selected archive SHA256:"
           sha256sum "$ZIP"
           mkdir -p extracted
           unzip -o "$ZIP" -d extracted
 
-          echo 'Kotlin source files found:'
-          find extracted -type f -name '*.kt' -print
+          echo 'MainActivity.kt preview:'
+          SRC=$(find extracted -type f -name 'MainActivity.kt' -print -quit)
+          if [ -n "$SRC" ]; then
+            sed -n '1,35p' "$SRC"
+          else
+            echo 'MainActivity.kt not found'
+          fi
 
       - name: Locate Android project
         id: project
@@ -64,7 +65,7 @@ jobs:
           set -euo pipefail
           APP=$(find extracted -type f -path '*/app/build.gradle.kts' -print -quit)
           if [ -z "$APP" ]; then
-            echo 'app/build.gradle.kts not found inside the selected ZIP'
+            echo 'app/build.gradle.kts not found inside selected ZIP'
             find extracted -maxdepth 5 -type f | head -100
             exit 1
           fi
