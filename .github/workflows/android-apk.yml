@@ -21,7 +21,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ZIP="AURIX_Aggressive_RedBlack_Exact_UI_Android14.zip"
+          ZIP="AURIX_STAGE1_FULL_SOURCE_NONREPAINT_STATS_BRACEFIX.zip"
           test -f "$ZIP" || { echo "Missing $ZIP"; ls -lah; exit 1; }
           echo "Selected project archive: $ZIP"
           mkdir -p extracted
